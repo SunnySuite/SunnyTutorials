@@ -55,8 +55,8 @@ lhs_B   = [SiteInfo(1; N=0, g=2.0, spin_rescaling=3/2)];
 # === Define Values of Exchange Interactions ===
 val_J1      = 3.27; # value of J1 in meV from Bai's PRL paper
 val_J_pyro  = [1.00,0.000,0.000,0.000]*val_J1; # pure nearest neighbor pyrochlore
-#val_J_mgcro = [1.00,0.0815,0.1050,0.0085]*val_J1; # further neighbor pyrochlore relevant for MgCr2O4
-val_J_mgcro = [1.00,0.000,0.025,0.025]*val_J1; # further neighbor pyrochlore relevant for MgCr2O4
+val_J_mgcro = [1.00,0.0815,0.1050,0.0085]*val_J1; # further neighbor pyrochlore relevant for MgCr2O4
+#val_J_mgcro = [1.00,0.000,0.025,0.025]*val_J1; # this is a funny setting!
 
 # === Build list of exchange interactions for our system ===
 exint_pyro  = [heisenberg(val_J_pyro[1],  Bond(1, 3, [0, 0, 0]),"J1")];
@@ -85,22 +85,28 @@ sam_LA_pyro  = LangevinSampler(sys_pyro, kT, α, Δt, nLA);
 sam_LA_mgcro = LangevinSampler(sys_mgcro, kT, α, Δt, nLA);
 
 ## === Optional: Construct Metropolis Sampler ===
-nMC = 5;  # Number of Langevin time steps performed each time the Sampler is invoked
-kT  = val_J1*20; # Initializing spin system at some finite temperature corresponding to 10 times J1 (to be well paramagnetic)
-sam_MC_pyro  = MetropolisSampler(sys_pyro, kT, nMC);
-sam_MC_mgcro = MetropolisSampler(sys_mgcro, kT, nMC);
+#nMC = 5;  # Number of Langevin time steps performed each time the Sampler is invoked
+#kT  = val_J1*20; # Initializing spin system at some finite temperature corresponding to 10 times J1 (to be well paramagnetic)
+#sam_MC_pyro  = MetropolisSampler(sys_pyro, kT, nMC);
+#sam_MC_mgcro = MetropolisSampler(sys_mgcro, kT, nMC);
 
 ## === Thermalize System to the temperature said below using Langevin===
-kT     = 0.1*val_J1; # Target temperature in meV
-nTherm = 500; # Number of times the Sampler will run, here nLA*nTherm
+kT     = 0.01; # Target temperature in meV
+nTherm = 2000; # Number of times the Sampler will run, here nLA*nTherm
 @time begin
     set_temp!(sam_LA_pyro,kT); thermalize!(sam_LA_pyro,nTherm);
     set_temp!(sam_LA_mgcro,kT);thermalize!(sam_LA_mgcro,nTherm);
 end
 
+## === Plot the resulting spin system for the Pyrochlore ===
+plot_spins(sys_pyro,arrowlength=0.5, linewidth=0.2, arrowsize=0.5)
+
+## === Plot the resulting spin system for the MgCr2O4 ===
+plot_spins(sys_mgcro,arrowlength=0.5, linewidth=0.2, arrowsize=0.5)
+
 #  === Calculate SQ ===
-nsam        = 2; # Number of samples that are averaged over  (usually 10 is good)
-decor_ratio = 10; # Number of time the Sampler is called to decorelate samples between sampling
+nsam        = 10; # Number of samples that are averaged over  (usually 10 is good)
+decor_ratio = 20; # Number of time the Sampler is called to decorelate samples between sampling
 bz_size     = (8,8,8); # Size of the resulting extended Brillouin zone after FFT
 @time begin
     sq_pyro  = StructureFactor(sys_pyro; bz_size=bz_size, dipole_factor=true)
@@ -126,8 +132,8 @@ function PlotSQ(input_sq, input_sys; Slice, Imax)
 end
 
 #  === Plot the Results ===
-PlotSQ(sq_pyro, sys_pyro; Slice=-1, Imax=200)
-PlotSQ(sq_mgcro, sys_mgcro; Slice=-1, Imax=200)
+PlotSQ(sq_pyro, sys_pyro; Slice=0, Imax=200)
+PlotSQ(sq_mgcro, sys_mgcro; Slice=10, Imax=2)
 
 
 #  === Calculate SQW ===
@@ -158,11 +164,11 @@ function PlotSQW(input_sqw, input_sys; Slice1, Slice2, Imax)
     EN   = range(input_sqw.sfactor.offsets[4],length=size(input_sqw.sfactor)[4]);
     midQ = Int64(size(Q1)[1]/2);
     midE = Int64(size(EN)[1]/2);
-    Int  = input_sqw.sfactor[:,Slice1,Slice2,:]/prod(size(input_sys.lattice));
+    Int  = input_sqw.sfactor[:,:,:,:]/prod(size(input_sys.lattice));
     return display(Plots.heatmap(Q1,EN[1:midE],Int[:,Slice1,Slice2,1:midE]',clim=(0,Imax)));   
 end
 
 
-    #  === Plot the Results ===
-    PlotSQ(sqw_pyro, sys_pyro; Slice1=0, Slice2=0, Imax=200)
-    PlotSQ(sqw_mgcro, sys_mgcro; Slice1=0, Slice1=0, Imax=200)
+#  === Plot the Results ===
+PlotSQW(sqw_pyro, sys_pyro; Slice1=-10, Slice2=0, Imax=2000);
+PlotSQW(sqw_mgcro, sys_mgcro; Slice1=-10, Slice2=0, Imax=2000);
