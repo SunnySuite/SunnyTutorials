@@ -34,7 +34,7 @@ print_allowed_anisotropy(xtal_pyro, 1);
 # === Define the crystal structure of MgCr2O4 by copying the info from a .cif file INCLUDING space group and setting === 
 lat_vecs     = lattice_vectors(8.3342, 8.3342, 8.3342, 90.0, 90.0, 90.0);  
 bas_vecs     = [ [0.12500, 0.12500, 0.12500],
-                [0.50000, 0.50000, 0.50000],
+                 [0.50000, 0.50000, 0.50000],
                 [0.26070, 0.26070, 0.26070]]; 
 bas_typs     = ["Mg","Cr","O"];
 lat_spg      = 227; 
@@ -55,18 +55,21 @@ lhs_B   = [SiteInfo(1; N=0, g=2.0, spin_rescaling=3/2)];
 # === Define Values of Exchange Interactions ===
 val_J1      = 3.27; # value of J1 in meV from Bai's PRL paper
 val_J_pyro  = [1.00,0.000,0.000,0.000]*val_J1; # pure nearest neighbor pyrochlore
-val_J_mgcro = [1.00,0.0815,0.1050,0.0085]*val_J1; # further neighbor pyrochlore relevant for MgCr2O4
+val_J_mgcro = [1.00,0.0815,0.1050,0.085]*val_J1; # further neighbor pyrochlore relevant for MgCr2O4
 #val_J_mgcro = [1.00,0.000,0.025,0.025]*val_J1; # this is a funny setting!
 
 # === Build list of exchange interactions for our system ===
-exint_pyro  = [heisenberg(val_J_pyro[1],  Bond(1, 3, [0, 0, 0]),"J1")];
+exint_pyro  = [heisenberg(val_J_pyro[1],  Bond(1, 3, [0, 0, 0]),"J1"),
+               heisenberg(val_J_pyro[2],  Bond(1, 2, [0, 0, 0]),"J2"), 
+               heisenberg(val_J_pyro[3],  Bond(2, 6, [0, 0, 0]),"J3a"), 
+               heisenberg(val_J_pyro[4],  Bond(1, 5, [0, 0, 0]),"J3b")];
 exint_mgcro = [heisenberg(val_J_mgcro[1], Bond(1, 2, [0, 0, 0]),"J1"),
                heisenberg(val_J_mgcro[2], Bond(1, 7, [0, 0, 0]),"J2"),
                heisenberg(val_J_mgcro[3], Bond(1, 3, [0, 0, 0]),"J3a"),   # Watch out for which is J3a see above plots
                heisenberg(val_J_mgcro[4], Bond(1, 3, [1, 0, 0]),"J3b")];   # Watch out for which is J3b see above plots           
 
 ## === Define Super Cell Size ===
-scd  = (6,6,6); #Super Cell Dimension Let's go small for now
+scd  = (10,10,10); #Super Cell Dimension Let's go small for now
 
 ## === Construct the Spin Systems ===
 sys_pyro  = SpinSystem(xtal_pyro,  exint_pyro,  scd, lhs_B);
@@ -77,25 +80,35 @@ rand!(sys_pyro);
 rand!(sys_mgcro);
 
 ## === Construct Langevin Sampler ===
-nLA = 20;  # Number of Langevin time steps performed each time the Sampler is invoked
-α   = 0.1; # Langevin damping, usually 0.05 or 0.1 is good.
+nLA = 10;  # Number of Langevin time steps performed each time the Sampler is invoked
+α   = 0.2; # Langevin damping, usually 0.05 or 0.1 is good.
 Δt  = 0.01; # Time steps in Langevin
 kT  = val_J1*20; # Initializing spin system at some finite temperature corresponding to 10 times J1 (to be well paramagnetic)
 sam_LA_pyro  = LangevinSampler(sys_pyro, kT, α, Δt, nLA);
 sam_LA_mgcro = LangevinSampler(sys_mgcro, kT, α, Δt, nLA);
 
 ## === Optional: Construct Metropolis Sampler ===
-#nMC = 5;  # Number of Langevin time steps performed each time the Sampler is invoked
-#kT  = val_J1*20; # Initializing spin system at some finite temperature corresponding to 10 times J1 (to be well paramagnetic)
-#sam_MC_pyro  = MetropolisSampler(sys_pyro, kT, nMC);
-#sam_MC_mgcro = MetropolisSampler(sys_mgcro, kT, nMC);
+nMC = 5;  # Number of Langevin time steps performed each time the Sampler is invoked
+kT  = val_J1*20; # Initializing spin system at some finite temperature corresponding to 10 times J1 (to be well paramagnetic)
+sam_MC_pyro  = MetropolisSampler(sys_pyro, kT, nMC);
+sam_MC_mgcro = MetropolisSampler(sys_mgcro, kT, nMC);
 
 ## === Thermalize System to the temperature said below using Langevin===
-kT     = 0.01; # Target temperature in meV
-nTherm = 2000; # Number of times the Sampler will run, here nLA*nTherm
+kT     = 1.8; # Target temperature in meV
+nTherm = 1000; # Number of times the Sampler will run, here nLA*nTherm
 @time begin
-    set_temp!(sam_LA_pyro,kT); thermalize!(sam_LA_pyro,nTherm);
-    set_temp!(sam_LA_mgcro,kT);thermalize!(sam_LA_mgcro,nTherm);
+    set_temp!(sam_LA_pyro,kT); 
+    set_temp!(sam_LA_mgcro,kT); 
+    set_temp!(sam_MC_pyro,kT); 
+    set_temp!(sam_MC_mgcro,kT); 
+    prog = Progress(Int64(round(nTherm/100)); dt=0.10, desc="Thermalizing: ", color=:blue)
+    for j in 1:nTherm/100
+        thermalize!(sam_LA_pyro,Int64(round(nTherm/100)));
+        thermalize!(sam_MC_pyro,Int64(round(nTherm/100)));
+        thermalize!(sam_LA_mgcro,Int64(round(nTherm/100)));
+        thermalize!(sam_MC_mgcro,Int64(round(nTherm/100)));
+        next!(prog);  
+    end
 end
 
 ## === Plot the resulting spin system for the Pyrochlore ===
@@ -104,9 +117,9 @@ plot_spins(sys_pyro,arrowlength=0.5, linewidth=0.2, arrowsize=0.5)
 ## === Plot the resulting spin system for the MgCr2O4 ===
 plot_spins(sys_mgcro,arrowlength=0.5, linewidth=0.2, arrowsize=0.5)
 
-#  === Calculate SQ ===
+##  === Calculate SQ ===
 nsam        = 10; # Number of samples that are averaged over  (usually 10 is good)
-decor_ratio = 20; # Number of time the Sampler is called to decorelate samples between sampling
+decor_ratio = 10; # Number of time the Sampler is called to decorelate samples between sampling
 bz_size     = (8,8,8); # Size of the resulting extended Brillouin zone after FFT
 @time begin
     sq_pyro  = StructureFactor(sys_pyro; bz_size=bz_size, dipole_factor=true)
@@ -132,8 +145,8 @@ function PlotSQ(input_sq, input_sys; Slice, Imax)
 end
 
 #  === Plot the Results ===
-PlotSQ(sq_pyro, sys_pyro; Slice=0, Imax=200)
-PlotSQ(sq_mgcro, sys_mgcro; Slice=10, Imax=2)
+PlotSQ(sq_pyro, sys_pyro; Slice=0, Imax=100)
+PlotSQ(sq_mgcro, sys_mgcro; Slice=0, Imax=100)
 
 
 #  === Calculate SQW ===
@@ -143,18 +156,22 @@ Nω   = 100;  # Number of Frequencies Calculated
 nsam = 2;  # Number of samples that are averaged over  (usually 10 is good)
 nLa  = 20;
 bz_size = (8,8,8);
+@time begin
 sqw_pyro = dynamic_structure_factor(sys_pyro, sam_LA_pyro; 
     dynΔt=Δt, meas_rate=convert(Int64,round(2*pi/(Δt*ωmax))), dyn_meas=Nω,
     bz_size=bz_size, 
     thermalize=nLa,nsamples=nsam,  
     verbose=true, reduce_basis=true, dipole_factor=true,
 )
+end
+@time begin
 sqw_mgcro = dynamic_structure_factor(sys_mgcro, sam_LA_mgcro; 
     dynΔt=Δt, meas_rate=convert(Int64,round(2*pi/(Δt*ωmax))), dyn_meas=Nω,
     bz_size=bz_size, 
     thermalize=nLa,nsamples=nsam,  
     verbose=true, reduce_basis=true, dipole_factor=true,
 )
+end
 
 #  === Create a function to plot S(Q,W) ===
 function PlotSQW(input_sqw, input_sys; Slice1, Slice2, Imax)
@@ -170,5 +187,5 @@ end
 
 
 #  === Plot the Results ===
-PlotSQW(sqw_pyro, sys_pyro; Slice1=-10, Slice2=0, Imax=2000);
-PlotSQW(sqw_mgcro, sys_mgcro; Slice1=-10, Slice2=0, Imax=2000);
+PlotSQW(sqw_pyro, sys_pyro; Slice1=-5, Slice2=0, Imax=20);
+PlotSQW(sqw_mgcro, sys_mgcro; Slice1=0, Slice2=0, Imax=200);
