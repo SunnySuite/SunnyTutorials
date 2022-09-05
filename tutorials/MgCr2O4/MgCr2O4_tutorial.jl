@@ -69,7 +69,7 @@ exint_mgcro = [heisenberg(val_J_mgcro[1], Bond(1, 2, [0, 0, 0]),"J1"),
                heisenberg(val_J_mgcro[4], Bond(1, 3, [1, 0, 0]),"J3b")];   # Watch out for which is J3b see above plots           
 
 ## === Define Super Cell Size ===
-scd  = (10,10,10); #Super Cell Dimension Let's go small for now
+scd  = (12,12,12); #Super Cell Dimension Let's go small for now
 
 ## === Construct the Spin Systems ===
 sys_pyro  = SpinSystem(xtal_pyro,  exint_pyro,  scd, lhs_B);
@@ -145,16 +145,16 @@ function PlotSQ(input_sq, input_sys; Slice, Imax)
 end
 
 #  === Plot the Results ===
-PlotSQ(sq_pyro, sys_pyro; Slice=0, Imax=100)
-PlotSQ(sq_mgcro, sys_mgcro; Slice=0, Imax=100)
+PlotSQ(sq_pyro, sys_pyro; Slice=0, Imax=200)
+PlotSQ(sq_mgcro, sys_mgcro; Slice=0, Imax=200)
 
 
 #  === Calculate SQW ===
 Nω   = 100;  # Number of Frequencies Calculated
 ωmax = val_J1*15;
 Δt   = 0.001;
-nsam = 2;  # Number of samples that are averaged over  (usually 10 is good)
-nLa  = 20;
+nsam = 10;  # Number of samples that are averaged over  (usually 10 is good)
+nLa  = 10;
 bz_size = (8,8,8);
 @time begin
 sqw_pyro = dynamic_structure_factor(sys_pyro, sam_LA_pyro; 
@@ -184,7 +184,6 @@ function PlotSQW(input_sqw, input_sys; Slice1, Slice2, Imax)
     Int  = input_sqw.sfactor[:,:,:,:]/prod(size(input_sys.lattice));
     return display(Plots.heatmap(Q1,EN[1:midE],Int[:,Slice1,Slice2,1:midE]',clim=(0,Imax)));   
 end
-
 
 #  === Plot the Results ===
 PlotSQW(sqw_pyro, sys_pyro; Slice1=-5, Slice2=0, Imax=20);
