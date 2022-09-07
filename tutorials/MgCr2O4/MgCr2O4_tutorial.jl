@@ -27,7 +27,7 @@ xtal_pyro   = Crystal(lat_vecs, bas_vecs; types=bas_typs);
 
 # === Return crystalographic information gathered by Sunny about the crystal structure === 
 display(xtal_pyro); 
-view_crystal(xtal_pyro, 3.2);
+#view_crystal(xtal_pyro, 3.2);
 print_bond_table(xtal_pyro, 5.9); 
 print_allowed_anisotropy(xtal_pyro, 1);
 
@@ -44,7 +44,7 @@ xtal_mgcro   = subcrystal(xtal_mgcro_2,"Cr");
 
 # === Return crystalographic information gathered by Sunny about the crystal structure === 
 display(xtal_mgcro); 
-view_crystal(xtal_mgcro,5.9)
+#view_crystal(xtal_mgcro,5.9)
 print_bond_table(xtal_mgcro, 5.9); 
 print_allowed_anisotropy(xtal_mgcro, 1);
 
@@ -80,33 +80,29 @@ rand!(sys_pyro);
 rand!(sys_mgcro);
 
 ## === Construct Langevin Sampler ===
-nLA = 10;  # Number of Langevin time steps performed each time the Sampler is invoked
+nLA = 50;  # Number of Langevin time steps performed each time the Sampler is invoked
 α   = 0.1; # Langevin damping, usually 0.05 or 0.1 is good.
-Δt  = 0.01; # Time steps in Langevin
+dt  = 0.01; # Time steps in Langevin
 kT  = val_J1*20; # Initializing spin system at some finite temperature corresponding to 10 times J1 (to be well paramagnetic)
-sam_LA_pyro  = LangevinSampler(sys_pyro, kT, α, Δt, nLA);
-sam_LA_mgcro = LangevinSampler(sys_mgcro, kT, α, Δt, nLA);
+sam_LA_pyro  = LangevinSampler(sys_pyro, kT, α, dt, nLA);
+sam_LA_mgcro = LangevinSampler(sys_mgcro, kT, α, dt, nLA);
 
 ## === Optional: Construct Metropolis Sampler ===
-#nMC = 5;  # Number of Langevin time steps performed each time the Sampler is invoked
-#kT  = val_J1*20; # Initializing spin system at some finite temperature corresponding to 10 times J1 (to be well paramagnetic)
-#sam_MC_pyro  = MetropolisSampler(sys_pyro, kT, nMC);
-#sam_MC_mgcro = MetropolisSampler(sys_mgcro, kT, nMC);
+nMC = 1;  # Number of Langevin time steps performed each time the Sampler is invoked
+kT  = val_J1*20; # Initializing spin system at some finite temperature corresponding to 10 times J1 (to be well paramagnetic)
+sam_MC_pyro  = MetropolisSampler(sys_pyro, kT, nMC);
+sam_MC_mgcro = MetropolisSampler(sys_mgcro, kT, nMC);
 
 ## === Thermalize System to the temperature said below using Langevin (and Metropolis maybe)===
-kT     = 2.2; # Target temperature in meV
-nTherm = 2000; # Number of times the Sampler will run, here nLA*nTherm
+kT     = 0.01; # Target temperature in meV
+nTherm = 1000; # Number of times the Sampler will run, here nLA*nTherm
 @time begin
     set_temp!(sam_LA_pyro,kT); 
     set_temp!(sam_LA_mgcro,kT); 
-    #set_temp!(sam_MC_pyro,kT); 
-    #set_temp!(sam_MC_mgcro,kT); 
-    prog = Progress(Int64(round(nTherm/100)); dt=0.10, desc="Thermalizing: ", color=:blue)
-    for j in 1:nTherm/100
-        thermalize!(sam_LA_pyro,Int64(round(nTherm/100)));
-        #thermalize!(sam_MC_pyro,Int64(round(nTherm/100)));
-        thermalize!(sam_LA_mgcro,Int64(round(nTherm/100)));
-        #thermalize!(sam_MC_mgcro,Int64(round(nTherm/100)));
+    prog = Progress(Int64(round(nTherm/10)); dt=0.10, desc="Thermalizing: ", color=:blue)
+    for j in 1:nTherm/10
+        thermalize!(sam_LA_pyro,Int64(round(nTherm/10)));
+        thermalize!(sam_LA_mgcro,Int64(round(nTherm/10)));
         next!(prog);  
     end
 end
@@ -118,20 +114,13 @@ end
 #plot_spins(sys_mgcro,arrowlength=0.5, linewidth=0.2, arrowsize=0.5)
 
 ##  === Calculate SQ ===
-nsam        = 10; # Number of samples that are averaged over  (usually 10 is good)
-decor_ratio = 10; # Number of time the Sampler is called to decorelate samples between sampling
+nsam        = 10; # Number of samples that are averaged over (usually 10 is good)
 bz_size     = (8,8,8); # Size of the resulting extended Brillouin zone after FFT
 @time begin
-    sq_pyro  = StructureFactor(sys_pyro;  bz_size=bz_size, dipole_factor=true)
-    sq_mgcro = StructureFactor(sys_mgcro; bz_size=bz_size, dipole_factor=true)
-    prog     = Progress(nsam ; dt=1.00, desc="Sampling: ", color=:green)
-    for j in 1:nsam
-        thermalize!(sam_LA_pyro,decor_ratio); 
-        thermalize!(sam_LA_mgcro,decor_ratio); 
-        Sunny.update!(sq_pyro,sys_pyro);
-        Sunny.update!(sq_mgcro,sys_mgcro);
-        next!(prog);        
-    end
+    sq_pyro = static_structure_factor(sys_pyro, sam_LA_pyro;
+            nsamples=nsam, bz_size=bz_size, thermalize=0, verbose=true, reduce_basis=true, dipole_factor=true)
+    sq_mgcro = static_structure_factor(sys_mgcro, sam_LA_mgcro;
+            nsamples=nsam, bz_size=bz_size, thermalize=0, verbose=true, reduce_basis=true, dipole_factor=true)            
 end
 
 #  === Create a function to plot S(Q) ===
@@ -141,12 +130,12 @@ function PlotSQ(input_sq, input_sys; Slice, Imax)
     Q3   = range(input_sq.sfactor.offsets[3],length=size(input_sq.sfactor)[3])/size(input_sys.lattice)[3];
     midQ = Int64(size(Q1)[1]/2);
     Int = input_sq.sfactor[:,:,Slice,0]/prod(size(input_sys.lattice));
-    return display(Plots.heatmap(Q1,Q2,Int,clim=(0,Imax)));   
+    return display(Plots.heatmap(Q1,Q2,Int,clim=(0,Imax),fmt = :png));   
 end
 
 #  === Plot the Results ===
-PlotSQ(sq_pyro, sys_pyro; Slice=0, Imax=100000)
-PlotSQ(sq_mgcro, sys_mgcro; Slice=0, Imax=100000)
+PlotSQ(sq_pyro, sys_pyro; Slice=0, Imax=100)
+PlotSQ(sq_mgcro, sys_mgcro; Slice=0, Imax=100)
 
 #  === Calculate SQW ===
 Nω   = 100;  # Number of Frequencies Calculated
