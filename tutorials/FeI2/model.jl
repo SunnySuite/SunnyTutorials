@@ -49,9 +49,7 @@ function FeI₂(dims; spin_rescaling=1.0, rng = nothing)
         0.0    J′2apm 0.0;
         0.0    0.0   J′2azz]
 
-    Sz = Sunny.gen_spin_ops(3)[3]
-    D = -2.165
-    J_ani = Sz*Sz  
+    D = -2.165 # Anisotropy coefficient
 
     interactions = [
         exchange(J₁, Bond(1,1,[1,0,0])),
@@ -60,7 +58,7 @@ function FeI₂(dims; spin_rescaling=1.0, rng = nothing)
         exchange(J′₀, Bond(1,1,[0,0,1])),
         exchange(J′₁, Bond(1,1,[1,0,1])),
         exchange(J′₂, Bond(1,1,[1,2,1])),
-        Sunny.SUNAnisotropy(D*J_ani, 1, "")
+        Sunny.anisotropy(D*𝒮[3]^2, 1, "anisotropy")
     ]
 
     # SiteInfos
