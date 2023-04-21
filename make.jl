@@ -5,6 +5,7 @@ example_dir = joinpath(root, "Sunny.jl", "examples", "longer_examples")
 save_dir = joinpath(root, "Tutorials")
 
 # If no arguments given, rebuild all notebooks
+println(length(ARGS))
 if length(ARGS) == 1
     tutorials = filter(name -> split(name, ".")[end] == "jl", readdir(example_dir))
 else
