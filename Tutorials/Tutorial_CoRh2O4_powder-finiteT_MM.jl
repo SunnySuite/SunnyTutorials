@@ -116,20 +116,27 @@ S   = 3/2
 lhs = [SpinInfo(1, S=S, g=2)]
 formfactors = [FormFactor("Co2")];
 
-# Create `System` and randomize it
+# Create Large `System` and randomize it
 sunmode = :dipole
 latsize = (6,6,6)
 sys     = System(magxtal, latsize, lhs, sunmode; seed=1)
 randomize_spins!(sys)
 plot_spins(sys; ghost_radius=10.0)
 
+# Create Small `System` and randomize it
+sunmode = :dipole
+latsize = (1,1,1)
+sys_small  = System(magxtal, latsize, lhs, sunmode; seed=1)
+randomize_spins!(sys_small)
+
 # Define Exchange Interactions 
 scaleJ = 0.63
 valJ1  = 1.00*scaleJ
-set_exchange!(sys, valJ1, Bond(1, 3, [0, 0, 0]));
+set_exchange!(sys,       valJ1, Bond(1, 3, [0, 0, 0]));
+set_exchange!(sys_small, valJ1, Bond(1, 3, [0, 0, 0]));
 
 # ---
-# ### System thermalization to an ordered, yet finite temperature, state
+# ### System thermalization to an ordered state with option for finite temp
 
 # Define Langevin Integrator and Initialize it 
 Δt0        = 0.05/abs(scaleJ*S); ## Time steps in Langevin
@@ -145,19 +152,78 @@ integrator = Langevin(Δt0; λ=λ0, kT=kT0);
 # Option 2: Anneal (according to a temperature schedule) than dwell once reach base
 # Note: starting from very high temperature here 
 kTs = [abs(scaleJ*S)*10 * 0.9^k for k in 0:100]
-anneal!(sys,integrator;kTschedule=kTs,ndwell=10)
-dwell!(sys,integrator;kTtarget=kTs[end],ndwell=20)
+anneal!(sys,integrator;kTschedule=kTs,ndwell=100)
+dwell!(sys,integrator;kTtarget=kTs[end],ndwell=2_000)
 
 # Option 3: Apply an additional gradient-descent minimization
-minimize_energy!(sys,maxiters=100)
+# The ground state is non-frustrated. Each spin should be exactly anti-aligned
+# with its 4 nearest-neighbors, such that every bond contributes an energy of
+# $-JS^2$. This gives an energy per site of $-2JS^2$. In this calculation, a
+# factor of 1/2 is necessary to avoid double-counting the bonds. Given the small
+# magnetic supercell (which includes only one unit cell), direct energy
+# minimization is successful in finding the ground state.
+randomize_spins!(sys_small)
+minimize_energy!(sys_small)
+energy_per_site = energy(sys_small) / length(eachsite(sys_small))
+@assert energy_per_site ≈ -2valJ1*S^2
 
-# Plot the resulting spin system to check ordering in real space
-plot_spins(sys)
+# Plotting the spins confirms the expected Néel order. 
+s0 = sys_small.dipoles[1,1,1,1]
+plot_spins(sys_small; ghost_radius=12, color=[s'*s0 for s in sys_small.dipoles])
+
 
 # --- 
 # ### Calculation of Neutron Scattering Responses
 
-# #### Dynamical and energy-integrated two-point correlation functions
+# #### T=0 Dynamical Spin Structure Factor from Spin Wave Theory
+
+# We can now estimate ``𝒮(𝐪,ω)`` with [`SpinWaveTheory`](@ref) and
+# [`intensity_formula`](@ref). The mode `:perp` contracts with a dipole factor
+# to return the unpolarized intensity. We will also apply broadening with the
+# [`lorentzian`](@ref) kernel, and will dampen intensities using the
+# [`FormFactor`](@ref) for Cobalt(2+).
+swt     = SpinWaveTheory(sys_small)
+η       = 0.4 # (meV)
+kernel  = lorentzian(η)
+formula = intensity_formula(swt, :perp; kernel, formfactors)
+
+# First, we consider the "single crystal" results. Use
+# [`reciprocal_space_path`](@ref) to construct a path that connects
+# high-symmetry points in reciprocal space. The [`intensities_broadened`](@ref)
+# function collects intensities along this path for the given set of energy
+# values.
+qpoints = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [1.0, 1.0, 1.0], [0.0, 0.0, 0.0]]
+path, xticks = reciprocal_space_path(magxtal, qpoints, 50)
+energies = collect(0:0.01:6)
+is = intensities_broadened(swt, path, energies, formula)
+
+fig = Figure()
+ax = Axis(fig[1,1]; aspect=1.4, ylabel="ω (meV)", xlabel="𝐪 (RLU)",
+          xticks, xticklabelrotation=π/10)
+heatmap!(ax, 1:size(is, 1), energies, is, colormap=:gnuplot2,colorrange = (0, 10))
+fig
+
+
+# A powder measurement effectively involves an average over all possible crystal
+# orientations. We use the function [`reciprocal_space_shell`](@ref) to sample
+# `n` wavevectors on a sphere of a given radius (inverse angstroms), and then
+# calculate the spherically-averaged intensity.
+
+radii = 0.01:0.02:3.5 # (1/Å)
+output = zeros(Float64, length(radii), length(energies))
+for (i, radius) in enumerate(radii)
+    n = 100
+    qs = reciprocal_space_shell(magxtal, radius, n)
+    is = intensities_broadened(swt, qs, energies, formula)
+    output[i, :] = sum(is, dims=1) / size(is, 1)
+end
+
+fig = Figure()
+ax = Axis(fig[1,1]; xlabel="|Q| (Å⁻¹)", ylabel="ω (meV)")
+heatmap!(ax, radii, energies, output, colormap=:gnuplot2)
+fig
+
+# #### Finite-Temperature Dynamical and energy-integrated two-point correlation functions
 
 # Calculate the Time Traces and Fourier Transform: Dynamical Structure Factor (first sample)
 ωmax     = 6.0  # Maximum  energy to resolve
@@ -166,21 +232,21 @@ sc       = dynamical_correlations(sys; Δt=Δt0, nω=nω, ωmax=ωmax, process_t
 @time add_sample!(sc, sys) # Add a sample trajectory
 
 # If desired, add additional decorrelated samples.
-nsamples      = 9   
-ndecorr       = 200
+nsamples      = 9  
+ndecorr       = 1_000
 @time sample_sf!(sc, sys, integrator; nsamples=nsamples, ndecorr=ndecorr);
 
-# #### Powder-Averaging at Zero-Temperature (at T=0)
+# #### Powder-Averaging of Low-Temperature Result
 
 # Projection into a powder-averaged neutron scattering intensity 
 formula    = intensity_formula(sc, :perp; formfactors, kT=integrator.kT)
 ωs         = available_energies(sc)
-Qmax       = 3.0
+Qmax       = 3.5
 nQpts      = 100
 Qpow       = range(0, Qmax, nQpts)
-npoints    = 50
+npoints    = 100
 η0         = 0.2
-pqw        = powder_average(sc, Qpow, npoints, formula; η=η0);
+@time pqw  = powder_average(sc, Qpow, npoints, formula; η=η0);
 
 # Plot resulting Ipow(Q,W)    
 heatmap(Qpow, ωs, pqw;
@@ -199,7 +265,7 @@ heatmap(Qpow, ωs, pqw;
 kTs        = [60 40 25 20 15 12 10 4] * Sunny.meV_per_K
 pqw_res    = [] 
 for kT in kTs
-    dwell!(sys, integrator; kTtarget=kT, ndwell=1000);
+    dwell!(sys, integrator; kTtarget=kT, ndwell=50_00);
     sc_loc = dynamical_correlations(sys; Δt=Δt0, nω, ωmax, process_trajectory=:symmetrize); 
     add_sample!(sc_loc, sys)
     formula = intensity_formula(sc, :perp; formfactors, kT)
@@ -217,6 +283,6 @@ for i in 1:8
         ylabel = c == 1 ? "Energy Transfer (meV)" : "",
         aspect = 1.4,
     )
-    heatmap!(ax, Qpow, ωs, pqw_res[9-i]; colorrange = (0, 10.0))
+    heatmap!(ax, Qpow, ωs, pqw_res[9-i]; colorrange = (0, 15.0))
 end
 fig

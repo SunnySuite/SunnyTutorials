@@ -29,8 +29,11 @@ using Sunny, GLMakie, LinearAlgebra
 a = 10.20 # (Å)
 b = 5.94
 c = 7.81
-latvecs = lattice_vectors(a, b, c, 90, 117.7, 90)
-crystal = Crystal(latvecs, [[0,0,0],[1/4,1/4,0]], 12, setting = "b1")
+lat_vecs = lattice_vectors(a, b, c, 90, 117.7, 90)
+basis_vecs = [[0,0,0],[1/4,1/4,0]]
+spgr = 12
+basis_types = ["Cu","Cu"]
+crystal = Crystal(lat_vecs, basis_vecs, spgr; types=basis_types, setting="b1")
 
 # The next step is to add interactions. The command [`print_symmetry_table`](@ref) shows 
 # all symmetry-allowed interactions up to a cutoff distance.
@@ -46,7 +49,7 @@ print_symmetry_table(crystal,7.1)
 # Here we employ the helical mode to propagate the magnetic structure within the unit cell 
 # using the fractional positions.
 
-Slist=[[1,0,0]]*1/2
+Slist=[[1,0,0]]
 n=[0,0,1]
 kvec=[0.77, 0, 0.115]
 S=1/2
@@ -56,6 +59,3 @@ sys = System(crystal,(1,1,1),Spinfo,:dipole)
 set_spiral_order_on_sublattice!(sys, 1 ;q=kvec,axis=n,S0=Slist[1])
 set_spiral_order_on_sublattice!(sys, 3 ;q=kvec,axis=n,S0=Slist[1])
 ps=plot_spins(sys)
-
-
-sys = define_magnetic_structure(sys,kvec,n,Slist,"helical")
