@@ -133,7 +133,7 @@ set_exchange!(sys, valJ1, Bond(1, 3, [0, 0, 0]));
 # ### System thermalization to an ordered, yet finite temperature, state
 
 # Define Langevin Integrator and Initialize it 
-Δt0        = 0.025/abs(scaleJ*S); ## Time steps in Langevin
+Δt0        = 0.05/abs(scaleJ*S); ## Time steps in Langevin
 λ0         = 0.05; ## Langevin damping, usually 0.05 or 0.1 is good.
 kT0        = 10.0*abs(scaleJ*S); ## Initialize at some temperature
 integrator = Langevin(Δt0; λ=λ0, kT=kT0); 
@@ -162,13 +162,13 @@ plot_spins(sys)
 
 # Calculate the Time Traces and Fourier Transform: Dynamical Structure Factor (first sample)
 ωmax     = 6.0  # Maximum  energy to resolve
-nω       = 100  # Number of energies to resolve
+nω       = 50  # Number of energies to resolve
 sc       = dynamical_correlations(sys; Δt=Δt0, nω=nω, ωmax=ωmax, process_trajectory=:symmetrize)
 @time add_sample!(sc, sys) # Add a sample trajectory
 
 # If desired, add additional decorrelated samples.
-nsamples      = 10    
-ndecorr       = 100
+nsamples      = 9   
+ndecorr       = 200
 @time sample_sf!(sc, sys, integrator; nsamples=nsamples, ndecorr=ndecorr);
 
 # #### Powder-Averaging at Zero-Temperature (at T=0)
@@ -176,11 +176,12 @@ ndecorr       = 100
 # Projection into a powder-averaged neutron scattering intensity 
 formula    = intensity_formula(sc, :perp; formfactors, kT=integrator.kT)
 ωs         = available_energies(sc)
-Qmax       = 3.5
+Qmax       = 3.0
 nQpts      = 100
 Qpow       = range(0, Qmax, nQpts)
-npoints    = 200
-pqw        = powder_average(sc, Qpow, npoints, formula; η=0.5);
+npoints    = 50
+η0         = 0.2
+pqw        = powder_average(sc, Qpow, npoints, formula; η=η0);
 
 # Plot resulting Ipow(Q,W)    
 heatmap(Qpow, ωs, pqw;
@@ -203,7 +204,7 @@ for kT in kTs
     sc_loc = dynamical_correlations(sys; Δt=Δt0, nω, ωmax, process_trajectory=:symmetrize); 
     add_sample!(sc_loc, sys)
     formula = intensity_formula(sc, :perp; formfactors, kT)
-    push!(pqw_res, powder_average(sc_loc, Qpow, npoints, formula;  η=0.5))
+    push!(pqw_res, powder_average(sc_loc, Qpow, npoints, formula;  η=η0))
 end
 
 # Plot the resulting Ipow(Q,W) as a function of temperature,
@@ -217,6 +218,6 @@ for i in 1:8
         ylabel = c == 1 ? "Energy Transfer (meV)" : "",
         aspect = 1.4,
     )
-    heatmap!(ax, Qpow, ωs, pqw_res[9-i]; colorrange = (0, 20.0))
+    heatmap!(ax, Qpow, ωs, pqw_res[9-i]; colorrange = (0, 10.0))
 end
 fig
