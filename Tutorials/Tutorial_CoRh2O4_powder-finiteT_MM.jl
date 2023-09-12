@@ -17,7 +17,6 @@
 # ---
 # #### Loading Packages 
 using Sunny, GLMakie, ProgressMeter, Statistics
-Sunny.offline_viewers() 
 
 # #### Defining Custom Functions For This Script
 

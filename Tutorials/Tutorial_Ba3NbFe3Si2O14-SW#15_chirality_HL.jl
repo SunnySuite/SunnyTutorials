@@ -1,4 +1,4 @@
-# ![](https://raw.githubusercontent.com/SunnySuite/Sunny.jl/main/assets/sunny_logo.jpg)
+# > ![](https://raw.githubusercontent.com/SunnySuite/Sunny.jl/main/assets/sunny_logo.jpg)
 # _This is a [tutorial](https://github.com/SunnySuite/SunnyTutorials/tree/main/tutorials)
 #  for the [Sunny](https://github.com/SunnySuite/Sunny.jl/) package,
 #  which enables dynamical simulations of ordered and thermally disordered spins with dipole
