@@ -1,7 +1,3 @@
-```@meta
-EditURL = "../Sunny.jl/examples/contributed_examples/15_Ba3NbFe3Si2O14.jl"
-```
-
 ````julia
 # Ba<sub>3</sub>NbFe<sub>3</sub>Si<sub>2</sub>O<sub>14</sub>
 ````
@@ -18,7 +14,7 @@ Load Packages
 using Sunny, GLMakie
 ````
 
-Build a [`Crystal`](@ref) for
+Build a `Crystal` for
 Ba<sub>3</sub>NbFe<sub>3</sub>Si<sub>2</sub>O<sub>14</sub> using the crystal
 structure from [Marty et al., Phys. Rev. Lett. **101**, 247201
 (2008)](http://dx.doi.org/10.1103/PhysRevLett.101.247201).
@@ -33,9 +29,9 @@ langasite = Crystal(latvecs, positions, 150; types)
 crystal = subcrystal(langasite, "Fe")
 view_crystal(crystal, 7)
 ````
-![](15_Ba3NbFe3Si2O14-7.png)
+![](15_Ba3NbFe3Si2O14-6.png)
 
-Create a [`System`](@ref) with a lattice size of $(1,1,7)$. The magnetic
+Create a `System` with a lattice size of $(1,1,7)$. The magnetic
 structure of Ba<sub>3</sub>NbFe<sub>3</sub>Si<sub>2</sub>O<sub>14</sub> was
 determined to have the ordering wavevector $𝐐=(0,0,1/7)$ and hence the
 magnetic unit cell has 7 sites. By passing an explicit `seed`, the system's
@@ -92,7 +88,7 @@ end
 
 Whilst Sunny provides tools to optimize the ground state automatically, in
 this case we already know the model ground state. Set the spiral magnetic
-order using [`set_spiral_order_on_sublattice!`](@ref). It takes an ordering
+order using `set_spiral_order_on_sublattice!`. It takes an ordering
 wavevector `q`, an axis of rotation for the spins `axis`, and the initial spin
 `S0` for each sublattice.
 
@@ -105,7 +101,7 @@ set_spiral_order_on_sublattice!(sys, 3; q, axis, S0=[-1/2, +sqrt(3)/2, 0])
 
 plot_spins(sys; color=[s[1] for s in sys.dipoles])
 ````
-![](15_Ba3NbFe3Si2O14-15.png)
+![](15_Ba3NbFe3Si2O14-14.png)
 
 Define a path in reciprocal space, $[0,1,-1+\xi]$ for $\xi = 0 \dots 3$.
 
@@ -498,7 +494,7 @@ ax = Axis(fig[1,1]; xlabel="Momentum (r.l.u.)", ylabel="Energy (meV)", xticks, x
 heatmap!(ax, 1:size(is,1), energies, is, colorrange=(0,5))
 fig
 ````
-![](15_Ba3NbFe3Si2O14-21.png)
+![](15_Ba3NbFe3Si2O14-20.png)
 
 ---
 
