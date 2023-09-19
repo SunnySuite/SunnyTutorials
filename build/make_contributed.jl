@@ -9,7 +9,7 @@ examples = filter(name -> split(name, ".")[end] == "jl", readdir(example_dir))
 
 # Build the notebooks
 map(examples) do example
-    Literate.markdown(joinpath(example_dir, example), save_dir; documenter=false, execute=true)
+    Literate.markdown(joinpath(example_dir, example), save_dir; documenter=true, execute=true)
 end
 
 # Sync with github
