@@ -1,7 +1,3 @@
-```@meta
-EditURL = "../Sunny.jl/examples/spinw_ports/08_Kagome_AFM.jl"
-```
-
 ````julia
 # Kagome Antiferromagnet
 ````
@@ -18,7 +14,7 @@ Load Packages
 using Sunny, GLMakie
 ````
 
-Build a [`Crystal`](@ref) with $P\overline{3}$ space group and Cr$^{+}$ ions
+Build a `Crystal` with $P\overline{3}$ space group and Cr$^{+}$ ions
 on each site.
 
 ````julia
@@ -40,7 +36,7 @@ Type 'Cr':
 
 ````
 
-Build a [`System`](@ref) with antiferrogmanetic nearest neighbor exchange
+Build a `System` with antiferrogmanetic nearest neighbor exchange
 $J=1$.
 
 ````julia
@@ -60,7 +56,7 @@ set_spiral_order_on_sublattice!(sys, 2; q, axis, S0=[cos(0),sin(0),0])
 set_spiral_order_on_sublattice!(sys, 3; q, axis, S0=[cos(2π/3),sin(2π/3),0])
 plot_spins(sys; ghost_radius=30, orthographic=true)
 ````
-![](08_Kagome_AFM-11.png)
+![](08_Kagome_AFM-10.png)
 
 Check energy. Each site participates in 4 bonds with energy J*S^2*cos(2π/3).
 Factor of 1/2 avoids double counting.
@@ -105,7 +101,7 @@ for i in axes(disp)[2]
 end
 fig
 ````
-![](08_Kagome_AFM-19.png)
+![](08_Kagome_AFM-18.png)
 
 ---
 
