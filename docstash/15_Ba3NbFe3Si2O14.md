@@ -1,6 +1,4 @@
-````julia
 # Ba<sub>3</sub>NbFe<sub>3</sub>Si<sub>2</sub>O<sub>14</sub>
-````
 
 - Sunny port of the SpinW tutorial authored by Toth et al.,
 https://spinw.org/tutorials/15tutorial.
@@ -29,7 +27,7 @@ langasite = Crystal(latvecs, positions, 150; types)
 crystal = subcrystal(langasite, "Fe")
 view_crystal(crystal, 7)
 ````
-![](15_Ba3NbFe3Si2O14-6.png)
+![](15_Ba3NbFe3Si2O14-5.png)
 
 Create a `System` with a lattice size of $(1,1,7)$. The magnetic
 structure of Ba<sub>3</sub>NbFe<sub>3</sub>Si<sub>2</sub>O<sub>14</sub> was
@@ -101,7 +99,7 @@ set_spiral_order_on_sublattice!(sys, 3; q, axis, S0=[-1/2, +sqrt(3)/2, 0])
 
 plot_spins(sys; color=[s[1] for s in sys.dipoles])
 ````
-![](15_Ba3NbFe3Si2O14-14.png)
+![](15_Ba3NbFe3Si2O14-13.png)
 
 Define a path in reciprocal space, $[0,1,-1+\xi]$ for $\xi = 0 \dots 3$.
 
@@ -494,7 +492,7 @@ ax = Axis(fig[1,1]; xlabel="Momentum (r.l.u.)", ylabel="Energy (meV)", xticks, x
 heatmap!(ax, 1:size(is,1), energies, is, colorrange=(0,5))
 fig
 ````
-![](15_Ba3NbFe3Si2O14-20.png)
+![](15_Ba3NbFe3Si2O14-19.png)
 
 ---
 
