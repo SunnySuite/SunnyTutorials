@@ -1,3 +1,3 @@
-# Tutorials for Sunny
+# We have moved!
 
-Browse the notebooks online by [clicking here](http://nbviewer.org/github/SunnySuite/SunnyTutorials/tree/main/Tutorials/). Using this link will enable interactive Javascript visualizations.
+Please visit the [SunnyContributed](https://github.com/SunnySuite/SunnyContributed) for the latest tutorials, workshop material, as well as new Sunny-related development efforts.
